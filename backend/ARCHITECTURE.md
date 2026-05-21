@@ -142,3 +142,55 @@ backend/
   - Documentation examples containing real secrets
 - The backend MUST ONLY reference the `SPONSOR_PRIVATE_KEY` securely via environment variables (`.env`), secure runtime secret managers, or external vault systems.
 - The backend MUST NEVER expose or transmit the `SPONSOR_PRIVATE_KEY` to the frontend, and MUST NEVER log the key.
+
+## 10. Strict Stateless Transaction Relay Layer Enforcement
+
+### 10.1 Trust Boundary Enforcement
+The backend acts strictly as a PURE TRANSACTION RELAYER. It is strictly forbidden for the backend to:
+- Compute truth or verdicts
+- Simulate contract execution
+- Return fabricated results
+- Cache final claim outcomes as authoritative
+- Bypass GenLayer contract calls
+
+The backend MUST NOT modify or reinterpret contract responses.
+
+### 10.2 Mandatory Execution Flow
+For every request, the backend follows this non-negotiable execution flow:
+- `submit_claim` → MUST call: `WebSeal.submit_claim` (GenLayer contract)
+- `adjudicate_claim` → MUST call: `WebSeal.adjudicate_claim` (GenLayer runtime execution)
+- `get_claim` → MUST read ONLY: `WebSeal.get_claim` (on-chain contract state)
+
+### 10.3 Single Source of Truth Guarantee
+- There is NO alternative data source for truth
+- There is NO fallback response logic
+- There is NO mock or cached "final verdict"
+- Contract state is the SINGLE SOURCE OF TRUTH
+
+Backend responses must always reflect raw contract output.
+
+### 10.4 Failure Handling (Strict Mode)
+If a GenLayer call fails:
+- Return "PENDING" or "FAILED"
+- NEVER compute, guess, or infer outcomes
+- NEVER modify or reinterpret failure states
+- NEVER fabricate a verdict
+
+### 10.5 Security Guarantee
+"The backend is a stateless relay layer. It has zero authority over truth resolution. All verifiable outcomes originate exclusively from the GenLayer WebSeal contract."
+
+### 10.6 Identity & Integrity Rule
+- Each request MUST include a unique idempotency key
+- Duplicate requests MUST NOT trigger duplicate contract execution
+- Backend MUST NOT alter request payloads once received
+
+### 10.7 Auditability Rule
+- Every backend request MUST be traceable via a request_id
+- Logs MUST NOT include sensitive data or private keys
+- Logs MUST NOT include computed interpretations of verdicts
+
+### 10.8 Response Integrity Rule
+Backend MUST:
+- Forward contract responses exactly as received
+- NOT transform verdict semantics
+- NOT normalize or reinterpret truth states

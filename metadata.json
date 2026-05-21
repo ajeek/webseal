@@ -1,6 +1,6 @@
 {
   "name": "WebSeal Architecture",
-  "description": "System architecture and specification for the WebSeal GenLayer app.",
+  "description": "Decentralized verification for real-world claims using GenLayer Intelligent Contracts.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
