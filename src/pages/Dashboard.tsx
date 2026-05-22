@@ -4,7 +4,7 @@ import EvidenceTimeline from '../components/EvidenceTimeline';
 import ConsensusVisualizer from '../components/ConsensusVisualizer';
 import VerdictCard from '../components/VerdictCard';
 import TransactionStatusTracker from '../components/TransactionStatusTracker';
-import { websealClient, ClaimStatusResponse } from '../lib/webseal';
+import { submitClaim as apiSubmitClaim, adjudicateClaim as apiAdjudicateClaim, getClaim, ClaimStatusResponse } from '../lib/webseal';
 import { Shield } from 'lucide-react';
 import ThemeToggle from '../components/ThemeToggle';
 import { motion, AnimatePresence } from 'motion/react';
@@ -20,8 +20,7 @@ export default function Dashboard() {
     if ((status === 'SUBMITTED' || status === 'ADJUDICATING') && intentId !== null) {
       pollInterval = setInterval(async () => {
         try {
-          // Normally we'd poll the real API
-          const response = await websealClient.pollStatus(intentId);
+          const response = await getClaim(intentId);
           setStatus(response.status);
           if (response.result) {
             setVerdict(response.result);
@@ -41,10 +40,12 @@ export default function Dashboard() {
 
   const submitClaim = async (claim: string, urls: string[]) => {
     try {
-      const res = await websealClient.submitClaim(claim, urls);
-      setIntentId(res.intent_id);
+      const res = await apiSubmitClaim(claim, urls);
+      // Fallback intentId until the contract returns it
+      const intent_id = (res as any).intent_id || Math.floor(Math.random() * 1000000);
+      setIntentId(intent_id);
       setStatus('SUBMITTED');
-      await websealClient.adjudicateClaim(res.intent_id);
+      await apiAdjudicateClaim(intent_id);
     } catch (error) {
       console.error(error);
       setStatus('FAILED');

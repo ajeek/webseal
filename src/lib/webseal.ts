@@ -1,23 +1,19 @@
 import { genlayerClient } from "./genlayerClient";
 
 /**
- * GenLayer WebSeal Contract Address
- * Must be defined in .env:
- * VITE_CONTRACT_ADDRESS=0x...
+ * WebSeal Contract Address
  */
-const CONTRACT_ADDRESS = import.meta.env.VITE_CONTRACT_ADDRESS as string;
+const CONTRACT_ADDRESS = import.meta.env.VITE_CONTRACT_ADDRESS;
 
 // -----------------------------
-// SAFETY GUARD
+// SAFETY GUARD (BUILD SAFE)
 // -----------------------------
 if (!CONTRACT_ADDRESS) {
-  throw new Error(
-    "[WebSeal] Missing VITE_CONTRACT_ADDRESS in environment variables"
-  );
+  throw new Error("[WebSeal] Missing VITE_CONTRACT_ADDRESS");
 }
 
 // -----------------------------
-// TYPES (FRONTEND SAFE FORMAT)
+// TYPES
 // -----------------------------
 export interface VerdictResult {
   verdict: "TRUE" | "FALSE" | "UNVERIFIABLE";
@@ -40,52 +36,82 @@ export interface ClaimStatusResponse {
 // WRITE: SUBMIT CLAIM
 // -----------------------------
 export async function submitClaim(claim: string, urls: string[]) {
-  return await genlayerClient.writeContract({
-    address: CONTRACT_ADDRESS,
-    functionName: "submit_claim",
-    args: [claim, urls],
-    value: BigInt(0),
-  });
+  try {
+    const txHash = await genlayerClient.writeContract({
+      address: CONTRACT_ADDRESS,
+      functionName: "submit_claim",
+      args: [claim, urls],
+      value: BigInt(0),
+    });
+
+    return { txHash };
+  } catch (err: any) {
+    console.error("[submitClaim failed]", err);
+    throw new Error("Transaction rejected or failed");
+  }
 }
 
 // -----------------------------
 // WRITE: ADJUDICATE CLAIM
 // -----------------------------
 export async function adjudicateClaim(intentId: number) {
-  return await genlayerClient.writeContract({
-    address: CONTRACT_ADDRESS,
-    functionName: "adjudicate_claim",
-    args: [intentId],
-    value: BigInt(0),
-  });
+  try {
+    const txHash = await genlayerClient.writeContract({
+      address: CONTRACT_ADDRESS,
+      functionName: "adjudicate_claim",
+      args: [intentId],
+      value: BigInt(0),
+    });
+
+    return { txHash };
+  } catch (err: any) {
+    console.error("[adjudicateClaim failed]", err);
+    throw new Error("Adjudication transaction failed");
+  }
 }
 
 // -----------------------------
-// READ: GET CLAIM (SAFE NORMALIZED OUTPUT)
+// READ: GET CLAIM
 // -----------------------------
 export async function getClaim(
   intentId: number
 ): Promise<ClaimStatusResponse> {
-  const result: any = await genlayerClient.readContract({
-    address: CONTRACT_ADDRESS,
-    functionName: "get_claim",
-    args: [intentId],
-    stateStatus: "accepted",
-  });
+  try {
+    const result: any = await genlayerClient.readContract({
+      address: CONTRACT_ADDRESS,
+      functionName: "get_claim",
+      args: [intentId],
+      stateStatus: "accepted",
+    });
 
-  // -----------------------------
-  // NORMALIZATION (CRITICAL FOR UI SAFETY)
-  // -----------------------------
-  return {
-    intent_id: Number(result.intent_id),
-    status: result.status,
-    claim: result.claim,
-    evidence_urls: Array.isArray(result.evidence_urls)
-      ? result.evidence_urls
-      : JSON.parse(result.evidence_urls ?? "[]"),
-    result: result.result ?? null,
-    submitted_at: Number(result.submitted_at ?? 0),
-    settled_at: Number(result.settled_at ?? 0),
-    error: result.error,
-  };
+    if (!result) {
+      throw new Error("Empty contract response");
+    }
+
+    return {
+      intent_id: Number(result.intent_id),
+      status: result.status ?? "FAILED",
+      claim: result.claim ?? "",
+      evidence_urls: Array.isArray(result.evidence_urls)
+        ? result.evidence_urls
+        : JSON.parse(result.evidence_urls ?? "[]"),
+      result: result.result ?? null,
+      submitted_at: Number(result.submitted_at ?? 0),
+      settled_at: Number(result.settled_at ?? 0),
+      error: result.error,
+    };
+  } catch (err: any) {
+    console.error("[getClaim failed]", err);
+
+    return {
+      intent_id: intentId,
+      status: "FAILED",
+      claim: "",
+      evidence_urls: [],
+      result: null,
+      submitted_at: 0,
+      settled_at: 0,
+      error: err.message ?? "Read failed",
+    };
+  }
 }
