@@ -1,4 +1,6 @@
-const BASE_URL = '/api';
+const BASE_URL = (import.meta as any).env.VITE_BACKEND_URL 
+  ? `${(import.meta as any).env.VITE_BACKEND_URL}/api`
+  : '/api';
 
 export interface VerdictResult {
   verdict: 'TRUE' | 'FALSE' | 'UNVERIFIABLE';
@@ -27,7 +29,10 @@ export const websealClient = {
       },
       body: JSON.stringify({ claim, urls }),
     });
-    if (!res.ok) throw new Error('Failed to submit claim');
+    if (!res.ok) {
+      const errText = await res.text().catch(() => 'No response body');
+      throw new Error(`Failed to submit claim: ${res.status} ${res.statusText} - ${errText}`);
+    }
     return res.json();
   },
   

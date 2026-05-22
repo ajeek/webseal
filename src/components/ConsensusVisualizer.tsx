@@ -60,23 +60,6 @@ export default function ConsensusVisualizer({ status }: ConsensusProps) {
 
           return (
             <React.Fragment key={node.id}>
-              {/* Connecting Line */}
-              <motion.line 
-                initial={false}
-                animate={{
-                  x2: isSettled || isFailed ? 0 : x,
-                  y2: isSettled || isFailed ? 0 : y,
-                  opacity: isActive || isSettled ? 0.3 : 0.1
-                }}
-                transition={{ duration: 1, type: "spring" }}
-                stroke={isSettled ? "#10B981" : isFailed ? "#EF4444" : "#6366F1"}
-                strokeWidth="2"
-                strokeDasharray="4 4"
-                className="absolute inset-0"
-                style={{ originX: 0, originY: 0, transform: `translate(128px, 128px)` }}
-                x1={0} y1={0}
-              />
-
               {/* Node Point */}
               <motion.div
                 initial={false}
@@ -108,19 +91,17 @@ export default function ConsensusVisualizer({ status }: ConsensusProps) {
             const x = Math.cos(radian) * radius;
             const y = Math.sin(radian) * radius;
             return (
-               <motion.line
+               <motion.path
                  key={`line-${node.id}`}
                  initial={false}
                  animate={{
-                    x2: isSettled || isFailed ? 128 : 128 + x,
-                    y2: isSettled || isFailed ? 128 : 128 + y,
+                    d: `M 128 128 L ${isSettled || isFailed ? 128 : 128 + x} ${isSettled || isFailed ? 128 : 128 + y}`,
                     opacity: isActive ? 0.4 : isSettled ? 0.8 : 0
                  }}
                  transition={{ duration: 0.8 }}
-                 x1="128" y1="128"
                  stroke={isSettled ? "currentColor" : isFailed ? "#EF4444" : "#6366F1"}
                  className={isSettled ? 'text-emerald-500' : ''}
-                 strokeWidth="2"
+                 strokeWidth={2}
                  strokeDasharray="4 4"
                />
             )
