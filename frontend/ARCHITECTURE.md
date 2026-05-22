@@ -17,8 +17,8 @@ frontend/
 │   │   └── ThemeContext.tsx         # Global theme state and localStorage persistence
 │   ├── pages/
 │   │   └── Dashboard.tsx            # Main view orchestrating the components
-│   ├── api/
-│   │   └── websealClient.ts         # Thin HTTP wrapper for backend API calls
+│   ├── lib/
+│   │   └── webseal.ts               # Thin HTTP wrapper for backend API calls
 │   ├── styles/
 │   │   └── globals.css              # PostCSS / Tailwind directives & theme variables
 ```

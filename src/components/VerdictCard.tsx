@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import { ShieldCheck, ShieldAlert, ShieldQuestion } from 'lucide-react';
-import { VerdictResult } from '../api/websealClient';
+import { VerdictResult } from '../lib/webseal';
 
 interface VerdictCardProps {
   verdictData: VerdictResult;

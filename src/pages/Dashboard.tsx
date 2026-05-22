@@ -4,7 +4,7 @@ import EvidenceTimeline from '../components/EvidenceTimeline';
 import ConsensusVisualizer from '../components/ConsensusVisualizer';
 import VerdictCard from '../components/VerdictCard';
 import TransactionStatusTracker from '../components/TransactionStatusTracker';
-import { websealClient, ClaimStatusResponse } from '../api/websealClient';
+import { websealClient, ClaimStatusResponse } from '../lib/webseal';
 import { Shield } from 'lucide-react';
 import ThemeToggle from '../components/ThemeToggle';
 import { motion, AnimatePresence } from 'motion/react';
