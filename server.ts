@@ -1,7 +1,39 @@
 import express from "express";
 import path from "path";
-import { createServer as createViteServer } from "vite";
-import crypto from "crypto";
+import dotenv from "dotenv";
+
+import { createClient } from "genlayer-js";
+import { TransactionStatus } from "genlayer-js/types";
+
+// ----------------------------------------------------------------------------
+// ENV
+// ----------------------------------------------------------------------------
+
+dotenv.config();
+
+const CONTRACT_ADDRESS = process.env.CONTRACT_ADDRESS!;
+const GENLAYER_RPC_URL = process.env.GENLAYER_RPC_URL!;
+const SPONSOR_PRIVATE_KEY = process.env.SPONSOR_PRIVATE_KEY!;
+
+// ----------------------------------------------------------------------------
+// GENLAYER CLIENT (REAL SDK)
+// ----------------------------------------------------------------------------
+
+// READ client (no wallet needed)
+const readClient = createClient({
+  chain: process.env.GENLAYER_NETWORK as any,
+});
+
+// WRITE client (wallet required for txs)
+const writeClient = createClient({
+  chain: process.env.GENLAYER_NETWORK as any,
+  account: SPONSOR_PRIVATE_KEY as any,
+  provider: undefined as any, // server-side relayer (no browser wallet)
+});
+
+// ----------------------------------------------------------------------------
+// EXPRESS
+// ----------------------------------------------------------------------------
 
 async function startServer() {
   const app = express();
@@ -9,79 +41,133 @@ async function startServer() {
 
   app.use(express.json());
 
-  // Backend Relayer Endpoints
-  // In a real GenLayer node, these would sign transactions to target `CONTRACT_ADDRESS` using `SPONSOR_PRIVATE_KEY` 
-  
-  // Temporary locally-stored state for the stateless relayer simulation
-  const mockState = new Map();
+  // --------------------------------------------------------------------------
+  // SUBMIT CLAIM (REAL CONTRACT CALL)
+  // --------------------------------------------------------------------------
 
-  app.post("/api/submit_claim", (req, res) => {
-    const { claim, urls } = req.body;
-    const intent_id = Math.floor(Math.random() * 1000000);
-    mockState.set(intent_id, {
-      intent_id,
-      status: 'SUBMITTED',
-      claim,
-      evidence_urls: urls,
-      result: null,
-      submitted_at: Date.now(),
-      settled_at: 0
+  app.post("/api/submit_claim", async (req, res) => {
+    try {
+      const { claim_text, urls } = req.body;
+
+      if (!claim_text || !Array.isArray(urls)) {
+        return res.status(400).json({ error: "INVALID_INPUT" });
+      }
+
+      if (urls.length > 3) {
+        return res.status(400).json({ error: "MAX_URLS_EXCEEDED" });
+      }
+
+      const txHash = await writeClient.writeContract({
+        address: CONTRACT_ADDRESS,
+        functionName: "submit_claim",
+        args: [claim_text, urls],
+        value: BigInt(0),
+      });
+
+      return res.json({
+        success: true,
+        tx_hash: txHash,
+      });
+    } catch (err: any) {
+      return res.status(500).json({
+        error: "SUBMIT_FAILED",
+        message: err.message,
+      });
+    }
+  });
+
+  // --------------------------------------------------------------------------
+  // ADJUDICATE CLAIM (REAL CONTRACT EXECUTION)
+  // --------------------------------------------------------------------------
+
+  app.post("/api/adjudicate_claim", async (req, res) => {
+    try {
+      const { intent_id } = req.body;
+
+      if (intent_id === undefined) {
+        return res.status(400).json({ error: "INVALID_INTENT_ID" });
+      }
+
+      const txHash = await writeClient.writeContract({
+        address: CONTRACT_ADDRESS,
+        functionName: "adjudicate_claim",
+        args: [intent_id],
+        value: BigInt(0),
+      });
+
+      return res.json({
+        success: true,
+        tx_hash: txHash,
+      });
+    } catch (err: any) {
+      return res.status(500).json({
+        error: "ADJUDICATION_FAILED",
+        message: err.message,
+      });
+    }
+  });
+
+  // --------------------------------------------------------------------------
+  // GET CLAIM (REAL ON-CHAIN READ ONLY)
+  // --------------------------------------------------------------------------
+
+  app.get("/api/get_claim/:id", async (req, res) => {
+    try {
+      const intent_id = Number(req.params.id);
+
+      const result = await readClient.readContract({
+        address: CONTRACT_ADDRESS,
+        functionName: "get_claim",
+        args: [intent_id],
+        stateStatus: "accepted",
+      });
+
+      return res.json(result);
+    } catch (err: any) {
+      return res.status(500).json({
+        error: "READ_FAILED",
+        message: err.message,
+      });
+    }
+  });
+
+  // --------------------------------------------------------------------------
+  // HEALTH
+  // --------------------------------------------------------------------------
+
+  app.get("/api/health", (_, res) => {
+    res.json({
+      status: "ok",
+      contract: CONTRACT_ADDRESS,
+      rpc: GENLAYER_RPC_URL,
     });
-    
-    // Simulating relayer safely returning an intent ID to the user to poll
-    res.json({ intent_id });
   });
 
-  app.post("/api/adjudicate_claim", (req, res) => {
-    const { intent_id } = req.body;
-    const claim = mockState.get(intent_id);
-    if (!claim) return res.status(404).json({ error: "Intent not found" });
-    
-    claim.status = 'ADJUDICATING';
-    
-    // Simulate real GenLayer execution delay
-    setTimeout(() => {
-      claim.status = 'SETTLED';
-      claim.settled_at = Date.now();
-      claim.result = {
-          verdict: 'TRUE',
-          confidence: 96,
-          reason: 'Evidence from multiple provided urls indicates the claim is true, processed via gl.nondet.exec_prompt and reached consensus strictly via WebSeal GenLayer contract.'
-      };
-    }, 5000);
+  // --------------------------------------------------------------------------
+  // FRONTEND
+  // --------------------------------------------------------------------------
 
-    res.json({ success: true, status: claim.status });
-  });
-
-  app.get("/api/get_claim/:id", (req, res) => {
-    const intent_id = parseInt(req.params.id);
-    const claim = mockState.get(intent_id);
-    if (!claim) return res.status(404).json({ error: "Intent not found" });
-    res.json(claim);
-  });
-
-  // Health check
-  app.get("/api/health", (req, res) => {
-    res.json({ status: "healthy", genlayer_rpc_status: "simulated" });
-  });
-
-  // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
+    const { createServer: createViteServer } = await import("vite");
+
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
     });
+
     app.use(vite.middlewares);
   } else {
-    const distPath = path.join(process.cwd(), 'dist');
-    app.use(express.static(distPath));
-    app.get('*', (req, res) => {
-      res.sendFile(path.join(distPath, 'index.html'));
+    const dist = path.join(process.cwd(), "dist");
+    app.use(express.static(dist));
+
+    app.get("*", (_, res) => {
+      res.sendFile(path.join(dist, "index.html"));
     });
   }
 
   app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Stateless Transation Relay running on http://0.0.0.0:${PORT}`);
+    console.log("WebSeal GenLayer Relayer running on:", PORT);
+    console.log("Contract:", CONTRACT_ADDRESS);
   });
 }
 
