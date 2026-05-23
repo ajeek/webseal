@@ -18,7 +18,7 @@ export function createGenlayerWriteClient(account: string) {
 
   return createClient({
     chain: testnetBradbury,
-    account,
+    account: account as any,
     provider: window.ethereum,
   });
 }

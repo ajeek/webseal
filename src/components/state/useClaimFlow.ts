@@ -37,8 +37,7 @@ function validateClaimState(result: any) {
   if (!result) throw new Error("Empty state");
 
   // Our prompt specified these constraints
-  if (typeof result.intent_id !== "number") {
-    // Sometimes it's string or bigint. Let's strictly follow the prompt if possible.
+  if (typeof result.intent_id !== "number" && typeof result.intent_id !== "bigint") {
     throw new Error("Invalid intent_id");
   }
 
@@ -116,11 +115,31 @@ export function useClaimFlow() {
 
         validateClaimState(result);
 
+        let contractData = result;
+        if (typeof result.result === "string") {
+          try {
+            const parsedResult = JSON.parse(result.result);
+            contractData = { ...result, ...parsedResult };
+          } catch (e) {
+            console.error("Failed to parse result JSON", e);
+          }
+        } else if (result.result && typeof result.result === "object") {
+          contractData = { ...result, ...result.result };
+        }
+
         setData({
-          ...result,
+          ...contractData,
           ui_synced: true,
         });
         setStatus("STATE_SYNCED");
+      } else if (
+        receipt.txExecutionResultName === ExecutionResult.FINISHED_WITH_ERROR
+      ) {
+        throw new Error("Execution failed with contract error");
+      } else if (
+        receipt.txExecutionResultName === ExecutionResult.NOT_VOTED
+      ) {
+        throw new Error("Execution was not voted on by validators");
       } else {
         throw new Error("Execution failed or rejected by consensus");
       }

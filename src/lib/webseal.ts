@@ -3,7 +3,7 @@ import {
   createGenlayerWriteClient,
 } from "./genlayerClient";
 
-const CONTRACT_ADDRESS = import.meta.env.VITE_CONTRACT_ADDRESS as string;
+const CONTRACT_ADDRESS = (import.meta as any).env.VITE_CONTRACT_ADDRESS as `0x${string}`;
 
 // -------------------------
 // WRITE: SUBMIT CLAIM
@@ -49,5 +49,5 @@ export async function getClaim(intentId: number) {
     functionName: "get_claim",
     args: [intentId],
     stateStatus: "accepted",
-  });
+  } as any);
 }
