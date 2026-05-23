@@ -1,15 +1,11 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
-import { ThemeProvider } from './context/ThemeContext';
-import Dashboard from './pages/Dashboard';
+import TopBar from "./components/layout/TopBar";
+import Dashboard from "./pages/Dashboard";
 
 export default function App() {
   return (
-    <ThemeProvider>
+    <div className="min-h-screen bg-gray-50 dark:bg-[#06080A] text-gray-900 dark:text-white transition-colors">
+      <TopBar />
       <Dashboard />
-    </ThemeProvider>
+    </div>
   );
 }

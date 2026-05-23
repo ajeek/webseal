@@ -1,7 +1,7 @@
-import React from 'react';
-import { useTheme } from '../context/ThemeContext';
-import { Sun, Moon } from 'lucide-react';
-import { motion } from 'motion/react';
+import React from "react";
+import { useTheme } from "../context/ThemeContext";
+import { Sun, Moon } from "lucide-react";
+import { motion } from "motion/react";
 
 export default function ThemeToggle() {
   const { theme, toggleTheme } = useTheme();
@@ -14,10 +14,10 @@ export default function ThemeToggle() {
     >
       <motion.div
         initial={false}
-        animate={{ 
-          rotate: theme === 'dark' ? 0 : 90,
-          scale: theme === 'dark' ? 1 : 0,
-          opacity: theme === 'dark' ? 1 : 0
+        animate={{
+          rotate: theme === "dark" ? 0 : 90,
+          scale: theme === "dark" ? 1 : 0,
+          opacity: theme === "dark" ? 1 : 0,
         }}
         transition={{ duration: 0.3 }}
         className="absolute text-blue-400"
@@ -26,10 +26,10 @@ export default function ThemeToggle() {
       </motion.div>
       <motion.div
         initial={false}
-        animate={{ 
-          rotate: theme === 'light' ? 0 : -90,
-          scale: theme === 'light' ? 1 : 0,
-          opacity: theme === 'light' ? 1 : 0
+        animate={{
+          rotate: theme === "light" ? 0 : -90,
+          scale: theme === "light" ? 1 : 0,
+          opacity: theme === "light" ? 1 : 0,
         }}
         transition={{ duration: 0.3 }}
         className="absolute text-indigo-600"
